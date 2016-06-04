@@ -22,5 +22,7 @@ module TIPS
 
     # Do not swallow errors in after_commit/after_rollback callbacks.
     config.active_record.raise_in_transactional_callbacks = true
+    stuff = File.read("#{Rails.root}/../keys/key.md")
+    ENV['expedia_API_KEY']=stuff
   end
 end
