@@ -1,4 +1,3 @@
-require 'pry'
 require 'money'
 
 class EstimateController < ApplicationController
