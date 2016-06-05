@@ -4,12 +4,13 @@ class EstimateController < ApplicationController
   include ApplicationHelper
   skip_before_filter :verify_authenticity_token
   def index
-    from = request.parameters["estimate_request"]["from"]
-    to = request.parameters["estimate_request"]["to"]
-    from_date =request.parameters["estimate_request"]["from_date"]
-    to_date =request.parameters["estimate_request"]["to_date"]
-    currency_type =request.parameters["estimate_request"]["currency_type"]
-    hotel_star_rating = request.parameters["estimate_request"]["hotel_preference"]["star_rating"]
+    from = request.parameters["from"]
+
+    to = request.parameters["to"]
+    from_date =request.parameters["from_date"]
+    to_date =request.parameters["to_date"]
+    currency_type =request.parameters["currency_type"]
+    hotel_star_rating = request.parameters["hotel_preference"]["star_rating"]
 
     departure_info = get_the_flight_cost(from,to,from_date)
 
