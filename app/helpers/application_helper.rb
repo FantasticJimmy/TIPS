@@ -139,6 +139,8 @@ module ApplicationHelper
 
   def get_the_flight_cost(from,to,from_date)
     url = URI.parse('http://terminal2.expedia.com/x/mflights/search?departureAirport=' + from + '&arrivalAirport=' + to + '&departureDate=' + from_date + '&adultAge=18&apikey='+ENV['expedia_API_KEY'])
+    puts url.port
+    puts url.host
     req = Net::HTTP::Get.new(url.to_s)
     res = Net::HTTP.start(url.host, url.port) {|http|
       http.request(req)

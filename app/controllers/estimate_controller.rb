@@ -29,30 +29,29 @@ class EstimateController < ApplicationController
 
     local_food_expense = exchange_info(cost_of_food)
 
-    response = {}
-    response[:estimate_response] = {
-                                      currency_config:{currency_sigh: "$", currency_type: "CAD"},
-                                      hotel:{
-                                          name: hotel_info["hotel_name"], 
-                                          star_rating: hotel_info["hotelStarRating"],
-                                          review_rating: 4,
-                                          price: hotel_info["total_hotel_cost"]
-                                            },
-                                      flight:{
-                                        departure_agency:departure_info["airline_name"],
-                                        return_agency: departure_info["airline_name"],
-                                        review_rating: 4.5,
-                                        departure_price: departure_info["cost"],
-                                        return_price: return_info["cost"]
-                                      },
-                                      floating_daily_expense: cost_of_food,
-                                      car_rental: {
-                                        cost_of_car_rental:cost_of_car_rental,
-                                        car_model: car_rental_info[:car_model],
-                                        thumbnail_url: car_rental_info[:thumbnail_url]
-                                      },
-                                      total_expense: hotel_flight_food_car
-                                    }
+    response = {
+                  currency_config:{currency_sigh: "$", currency_type: "CAD"},
+                  hotel:{
+                      name: hotel_info["hotel_name"], 
+                      star_rating: hotel_info["hotelStarRating"],
+                      review_rating: 4,
+                      price: hotel_info["total_hotel_cost"]
+                        },
+                  flight:{
+                    departure_agency:departure_info["airline_name"],
+                    return_agency: departure_info["airline_name"],
+                    review_rating: 4.5,
+                    departure_price: departure_info["cost"],
+                    return_price: return_info["cost"]
+                  },
+                  floating_daily_expense: cost_of_food,
+                  car_rental: {
+                    cost_of_car_rental:cost_of_car_rental,
+                    car_model: car_rental_info[:car_model],
+                    thumbnail_url: car_rental_info[:thumbnail_url]
+                  },
+                  total_expense: hotel_flight_food_car
+                }
     render json: response
   end
 
