@@ -3,6 +3,7 @@ module ApplicationHelper
   def expedia_API
 
   end
+
   def setup_conversion_rate
     url = URI.parse('http://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20yahoo.finance.xchange%20where%20pair%20in%20(%22CADEUR%22,%20%22CADJPY%22,%20%22CADBGN%22,%20%22CADCZK%22,%20%22CADDKK%22,%20%22CADGBP%22,%20%22CADHUF%22,%20%22CADLTL%22,%20%22CADLVL%22,%20%22CADPLN%22,%20%22CADRON%22,%20%22CADSEK%22,%20%22CADCHF%22,%20%22CADNOK%22,%20%22CADHRK%22,%20%22CADRUB%22,%20%22CADTRY%22,%20%22CADAUD%22,%20%22CADBRL%22,%20%22CADCAD%22,%20%22CADCNY%22,%20%22CADHKD%22,%20%22CADIDR%22,%20%22CADILS%22,%20%22CADINR%22,%20%22CADKRW%22,%20%22CADMXN%22,%20%22CADMYR%22,%20%22CADNZD%22,%20%22CADPHP%22,%20%22CADSGD%22,%20%22CADTHB%22,%20%22CADZAR%22,%20%22CADISK%22)&env=store://datatables.org/alltableswithkeys')
     req = Net::HTTP::Get.new(url.to_s)
@@ -17,33 +18,34 @@ module ApplicationHelper
     rates = rates.each {|key,value| rates[key] = value.to_f}
   end
 
-  def exchange_info
-    setup_conversion_rate
-
+  def exchange_info(expense)
     rates = setup_conversion_rate
     rates.each do |key,value| 
       left, right = key.split('/')
       Money.add_rate(left,right, value)
     end
     Money.add_rate("CAD","USD",0.77)
-    mon = Money.new(1000, "CAD").exchange_to("USD")  
+    local_expense = Money.new(expense, "CAD").exchange_to("USD")  
   end
 
   def map_currency_code_to_country(country)
     case country.downcase
-    when "canada"
+    when "cad"
       country_hash = {currency_code:"CAD",
       index: 60.04}
     when "usa"
       country_hash = {currency_code:"USD",
       index: 69.13}
-
+    when "uk"
+      country_hash = {currency_code:"GBP",
+        index: 75.27}
     end
+
+    # when "spain",
+    #   "EUR"
     # when "germany",
     #   "EUR"
     #   60.68
-    # when "spain",
-    #   "EUR"
     #   56.99
     # when "greece",
     #   "EUR"
@@ -53,7 +55,6 @@ module ApplicationHelper
     #   73.48
     # when "italy",
     #   "EUR"
-    #   75.27
     # when "belgium"
     #   "EUR"
     #   82.87
@@ -72,8 +73,6 @@ module ApplicationHelper
     # when "denmark"
     #   "DKK"
     #   97.88
-    # when "uk"
-    #   "GBP"
     #   86.68
     # when "norway"
     #   "NOK"
@@ -135,15 +134,55 @@ module ApplicationHelper
     # when "iceland"
     #   "ISK"
     #   98.82
-    end
+    
   end
 
   def get_the_flight_cost(from,to,from_date)
-    url = URI.parse('http://terminal2.expedia.com/x/mflights/search?departureAirport=' + from + '&arrivalAirport=' + to + '&departureDate=' + from_date + '&childTravelerAge=18&apikey='+ENV['expedia_API_KEY'])
+    url = URI.parse('http://terminal2.expedia.com/x/mflights/search?departureAirport=' + from + '&arrivalAirport=' + to + '&departureDate=' + from_date + '&adultAge=18&apikey='+ENV['expedia_API_KEY'])
     req = Net::HTTP::Get.new(url.to_s)
     res = Net::HTTP.start(url.host, url.port) {|http|
       http.request(req)
     }
+    payload = ActiveSupport::JSON.decode(res.body)
+    legId= payload["offers"].first['legIds']
+    my_payload = {}
+    my_payload["cost"] = payload["offers"].first.values_at('totalFare').first
+    my_payload["arrival_date"]=payload["legs"].find{|x| x['legId']=legId}.values_at("segments").flatten.first['arrivalTime'].to_date
+    my_payload["airline_name"]= payload["legs"].find{|x| x['legId']=legId}.values_at("segments").flatten.first['airlineName']
+    my_payload["arrival_city"],my_payload['arrival_country'] = payload["legs"].find{|x| x['legId']=legId}.values_at("segments").flatten.last["arrivalAirportLocation"].split(", ")
+    my_payload
+  end
+
+
+  def get_the_hotel_cost(city,check_in_date,check_out_date,star_rating)
+    url = URI.parse('http://terminal2.expedia.com/x/mhotels/search?city=' + city + '&checkInDate=' + check_in_date.to_s + '&checkOutDate=' + check_out_date + '&verbose=0&room1=1&apikey='+ENV['expedia_API_KEY'])
+    req = Net::HTTP::Get.new(url.to_s)
+    res = Net::HTTP.start(url.host, url.port) {|http|
+      http.request(req)
+    }
+    payload = ActiveSupport::JSON.decode(res.body)
+    my_payload = {}
+
+    filter_one = payload["hotelList"].select{|x|x["hotelStarRating"].to_f >= star_rating}.first
+
+    my_payload["total_hotel_cost"] = filter_one.values_at('lowRateInfo').first["nightlyRatesPerRoom"].reduce(0){|memo,item|memo+=item["baseRate"].to_i}
+    my_payload["hotel_name"]= filter_one["name"]
+    my_payload
+  end
+
+  def get_the_car_rental_cost(city:city,check_in_date:check_in_date,check_out_date:check_out_date,pick_up_drop_off_location:pick_up_drop_off_location)
+    url = URI.parse('http://terminal2.expedia.com/x/cars/search?pickupdate='+check_in_date+'&dropoffdate='+check_out_date+'&pickuplocation='+pick_up_drop_off_location+'&dropofflocation='+pick_up_drop_off_location+'&sort=price&limit=10&apikey='+ENV['expedia_API_KEY'])
+    req = Net::HTTP::Get.new(url.to_s)
+    res = Net::HTTP.start(url.host, url.port) {|http|
+      http.request(req)
+    }
+    payload = ActiveSupport::JSON.decode(res.body)
+    my_payload = {
+      "car_model": payload["CarInfoList"]["CarInfo"].first["CarMakeModel"],
+      "total_rental_expense": payload["CarInfoList"]["CarInfo"].first["Price"]["BaseRate"]["Value"],
+      "url": payload["CarInfoList"]["CarInfo"].first["ThumbnailUrl"]
+    }
+    my_payload
   end
 
 end
